@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô phỏng Vật Lí Nhiệt 3D — Câu 2 &amp; Câu 4 Trả Lời Ngắn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- TOP NAVIGATION BAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">⚛</div>
+      <div>
+        <div class="brand-title">MÔ PHỎNG VẬT LÍ NHIỆT 3D</div>
+        <div class="brand-sub">Thực tế Thí nghiệm &amp; Mô hình Giải bài Trực quan</div>
+      </div>
+    </div>
+
+    <nav class="prob-tabs" aria-label="Chọn bài tập">
+      <button class="prob-tab active" data-prob="cau2">
+        <span class="tab-num">Câu 2</span>
+        <span class="tab-label">Hỗn hợp Rắn X (Hg) &amp; Nước đá</span>
+      </button>
+      <button class="prob-tab" data-prob="cau4">
+        <span class="tab-num">Câu 4</span>
+        <span class="tab-label">NLK Nhôm + Nước đá + Hơi nước</span>
+      </button>
+    </nav>
+
+    <div class="layout-switch">
+      <button class="layout-btn active" data-layout="split" title="Xem song song 3D và Giải bài">◫ Song song</button>
+      <button class="layout-btn" data-layout="full3d" title="Phóng to toàn màn hình 3D">⛶ Toàn cảnh 3D</button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="workspace">
+    <!-- LEFT: 3D LABORATORY STAGE -->
+    <section class="stage-pane">
+      <div id="viewport-3d" class="viewport-3d"></div>
+      <div id="annotations-layer" class="annotations-layer"></div>
+
+      <!-- Top-Left Live Telemetry HUD -->
+      <div class="hud-card hud-telemetry">
+        <div class="hud-metrics-grid">
+          <div class="metric-box">
+            <span class="metric-label">Nhiệt độ hiện tại</span>
+            <span class="metric-val val-temp" id="hud-temp">-38.83 °C</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label" id="hud-metric-label">Thời gian τ</span>
+            <span class="metric-val val-time" id="hud-metric-val">15.0 phút</span>
+          </div>
+        </div>
+        <div class="hud-phase-title" id="hud-phase-title">Đang khởi tạo...</div>
+        <div class="hud-phase-desc" id="hud-phase-desc"></div>
+      </div>
+
+      <!-- Top-Right Camera & Visual Layer Controls -->
+      <div class="hud-controls-col">
+        <div class="hud-toolbar">
+          <span class="toolbar-cap">Góc nhìn:</span>
+          <button class="cam-btn active" data-cam="overview">Toàn cảnh</button>
+          <button class="cam-btn" data-cam="core">Cận lõi</button>
+          <button class="cam-btn" data-cam="top">Từ trên</button>
+          <button class="cam-btn" data-cam="heater">Nguồn nhiệt</button>
+        </div>
+        <div class="hud-toolbar">
+          <span class="toolbar-cap">Hiển thị:</span>
+          <button class="tog-btn active" id="tog-cutaway">🔪 Cắt lớp</button>
+          <button class="tog-btn active" id="tog-vectors">🔥 Dòng nhiệt</button>
+          <button class="tog-btn active" id="tog-molecules">🔬 Phân tử 3D</button>
+          <button class="tog-btn active" id="tog-labels">🏷 Nhãn</button>
+        </div>
+      </div>
+
+      <!-- Bottom Interactive Timeline & Playback Bar -->
+      <div class="timeline-dock">
+        <div class="timeline-top">
+          <div class="play-group">
+            <button class="ctrl-btn primary" id="btn-play">⏸ Tạm dừng</button>
+            <button class="ctrl-btn" id="btn-reset-sim" title="Quay về đầu thí nghiệm">↺ Đặt lại</button>
+            <button class="ctrl-btn" id="btn-speed" title="Đổi tốc độ chạy">1x</button>
+          </div>
+          <div class="stage-markers" id="stage-markers"></div>
+          <div class="orbit-hint">🖱 Kéo xoay · Cuộn zoom · Chuột phải dịch</div>
+        </div>
+        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="1000" value="340" aria-label="Tiến trình thí nghiệm">
+      </div>
+    </section>
+
+    <!-- RIGHT: INTERACTIVE SOLVER PANEL -->
+    <aside class="solver-pane" id="solver-panel"></aside>
+  </main>
+
+  <!-- Scripts (Local Three.js + Modular Physics/3D/Solver) -->
+  <script src="vendor/three.min.js"></script>
+  <script src="physics.js"></script>
+  <script src="scene3d.js"></script>
+  <script src="solver-ui.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
