@@ -258,9 +258,10 @@
       const z = pos.getZ(i);
       const dist = Math.sqrt(x * x + z * z);
       const fade = 1 - Math.pow(dist / rMax, 2) * 0.65;
+      // Dùng cos(dist * freq - phase) để triệt tiêu điểm nhọn ở tâm r=0 (không tạo tia sao lưới)
       const y =
-        (Math.sin(dist * freq - time * 4.2) * 0.6 +
-          Math.cos(x * freq * 0.8 + time * 3.1) * 0.4) *
+        (Math.cos(dist * freq - time * 4.2) * 0.65 +
+          Math.cos(x * freq * 0.72 + time * 3.1) * 0.35) *
         amp *
         fade;
       pos.setY(i, y);
@@ -546,23 +547,23 @@
       lidRim.position.y = calHeight + 0.04;
       calGroup.add(lidRim);
 
-      // 3. Dây đun điện xoắn ốc 3D ở đáy lòng cốc
+      // 3. Dây đun điện xoắn ốc 3D nổi rõ ở đáy lòng cốc
       const coilPts = [];
       const turns = 4.5;
       const coilPtsCount = 120;
       for (let i = 0; i <= coilPtsCount; i++) {
         const t = i / coilPtsCount;
         const ang = t * Math.PI * 2 * turns;
-        const rad = 0.38 + Math.sin(t * Math.PI) * 0.28;
-        coilPts.push(new THREE.Vector3(Math.cos(ang) * rad, 0.37 + Math.sin(ang * 2) * 0.018, Math.sin(ang) * rad));
+        const rad = 0.34 + Math.sin(t * Math.PI) * 0.42;
+        coilPts.push(new THREE.Vector3(Math.cos(ang) * rad, 0.39 + Math.sin(ang * 2) * 0.022, Math.sin(ang) * rad));
       }
-      const coilGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(coilPts), 120, 0.036, 12, false);
+      const coilGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(coilPts), 120, 0.044, 12, false);
       const coilMat = new THREE.MeshStandardMaterial({
-        color: '#b45309',
-        emissive: new THREE.Color('#ff5500'),
-        emissiveIntensity: 1.5,
-        metalness: 0.65,
-        roughness: 0.3
+        color: '#ea580c',
+        emissive: new THREE.Color('#ff5a1f'),
+        emissiveIntensity: 1.75,
+        metalness: 0.55,
+        roughness: 0.25
       });
       const coilMesh = new THREE.Mesh(coilGeo, coilMat);
       calGroup.add(coilMesh);
@@ -906,133 +907,182 @@
       this.cau4 = { anchors: {} };
 
       const metalTex = createBrushedMetalTexture();
-      const foamTex = createFoamTexture();
 
-      // --- CỤM TRÁI: BẾP ĐUN & BÌNH SINH HƠI 100°C ---
+      // --- CỤM TRÁI: KIỀNG ĐUN 3 CHÂN + NGỌN LỬA BUNSEN + BÌNH CẦU SINH HƠI 100°C ---
       const boilerGroup = new THREE.Group();
       boilerGroup.position.set(-2.95, 0, -0.15);
       root.add(boilerGroup);
 
-      // Thân bếp điện
-      const stoveBase = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.95, 1.08, 0.42, 32),
-        new THREE.MeshStandardMaterial({ color: '#1e293b', metalness: 0.55, roughness: 0.4 })
-      );
-      stoveBase.position.y = 0.21;
-      stoveBase.castShadow = true;
-      stoveBase.receiveShadow = true;
-      boilerGroup.add(stoveBase);
+      // Chân đèn Bunsen + đầu đốt kim loại
+      const ironMat = new THREE.MeshStandardMaterial({ color: '#1e293b', metalness: 0.72, roughness: 0.38 });
+      const brass4Mat = new THREE.MeshStandardMaterial({ color: '#d97706', metalness: 0.85, roughness: 0.24 });
 
-      // Mặt bếp hồng ngoại phát sáng cam đỏ
+      const bunsenBase = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.44, 0.1, 24), ironMat);
+      bunsenBase.position.y = 0.05;
+      boilerGroup.add(bunsenBase);
+      const bunsenTube = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.34, 16), brass4Mat);
+      bunsenTube.position.y = 0.24;
+      boilerGroup.add(bunsenTube);
+
+      // Ngọn lửa Bunsen 2 lớp (xanh nhiệt nóng + lõi cam sáng)
+      const flameOuter = new THREE.Mesh(
+        new THREE.ConeGeometry(0.24, 0.52, 20),
+        new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, opacity: 0.65 })
+      );
+      flameOuter.position.y = 0.64;
+      boilerGroup.add(flameOuter);
+      const flameInner = new THREE.Mesh(
+        new THREE.ConeGeometry(0.14, 0.38, 16),
+        new THREE.MeshBasicMaterial({ color: '#fb923c', transparent: true, opacity: 0.92 })
+      );
+      flameInner.position.y = 0.58;
+      boilerGroup.add(flameInner);
+      this.cau4.flameOuter = flameOuter;
+      this.cau4.flameInner = flameInner;
+
+      // Vòng kiềng 3 chân đỡ lưới amiăng chịu nhiệt
+      const tripodRing = new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.045, 10, 32), ironMat);
+      tripodRing.rotation.x = Math.PI / 2;
+      tripodRing.position.y = 0.88;
+      tripodRing.castShadow = true;
+      boilerGroup.add(tripodRing);
+
+      for (let k = 0; k < 3; k++) {
+        const ang = (k / 3) * Math.PI * 2 + 0.4;
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.042, 0.96, 10), ironMat);
+        leg.position.set(Math.cos(ang) * 0.78, 0.44, Math.sin(ang) * 0.78);
+        leg.rotation.z = Math.cos(ang) * 0.14;
+        leg.rotation.x = -Math.sin(ang) * 0.14;
+        leg.castShadow = true;
+        boilerGroup.add(leg);
+      }
+
+      // Lưới tản nhiệt gốm phát ánh đỏ cam
       const burnerPlate = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.76, 0.76, 0.06, 32),
+        new THREE.CylinderGeometry(0.72, 0.72, 0.05, 28),
         new THREE.MeshStandardMaterial({
           color: '#7c2d12',
-          emissive: '#ff4500',
-          emissiveIntensity: 1.65,
-          roughness: 0.35
+          emissive: '#ff5a1f',
+          emissiveIntensity: 1.5,
+          roughness: 0.45
         })
       );
-      burnerPlate.position.y = 0.44;
+      burnerPlate.position.y = 0.91;
       boilerGroup.add(burnerPlate);
 
-      const burnerLight = new THREE.PointLight(0xff5500, 1.7, 3.6);
-      burnerLight.position.set(0, 0.7, 0);
+      const burnerLight = new THREE.PointLight(0xff6b2b, 1.85, 4.0);
+      burnerLight.position.set(0, 0.9, 0.2);
       boilerGroup.add(burnerLight);
       this.cau4.burnerLight = burnerLight;
 
-      // Bình cầu đáy bằng thủy tinh borosilicate (LatheGeometry)
+      // Bình cầu đáy tròn thủy tinh borosilicate đặt trên kiềng đun
       const flaskPts = [
         new THREE.Vector2(0, 0),
-        new THREE.Vector2(0.65, 0),
-        new THREE.Vector2(0.86, 0.35),
-        new THREE.Vector2(0.86, 0.82),
-        new THREE.Vector2(0.45, 1.32),
-        new THREE.Vector2(0.24, 1.55),
-        new THREE.Vector2(0.24, 2.05),
-        new THREE.Vector2(0.3, 2.1)
+        new THREE.Vector2(0.45, 0.03),
+        new THREE.Vector2(0.84, 0.34),
+        new THREE.Vector2(0.88, 0.72),
+        new THREE.Vector2(0.68, 1.08),
+        new THREE.Vector2(0.24, 1.38),
+        new THREE.Vector2(0.24, 1.88),
+        new THREE.Vector2(0.31, 1.94)
       ];
       const flaskMat = new THREE.MeshPhysicalMaterial({
         color: '#e0f2fe',
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.3,
         roughness: 0.06,
         metalness: 0.05,
         side: THREE.DoubleSide
       });
       const flask = new THREE.Mesh(new THREE.LatheGeometry(flaskPts, 40), flaskMat);
-      flask.position.y = 0.48;
+      flask.position.y = 0.94;
       boilerGroup.add(flask);
 
-      // Nước sôi bên trong bình cầu
+      // Nước sôi bên trong bình cầu (màu xanh ngọc ánh cam)
       const boilWaterMat = new THREE.MeshPhysicalMaterial({
         color: '#38bdf8',
         transparent: true,
-        opacity: 0.62,
+        opacity: 0.6,
         roughness: 0.1
       });
-      const boilBody = new THREE.Mesh(new THREE.CylinderGeometry(0.79, 0.62, 0.75, 36), boilWaterMat);
-      boilBody.position.y = 0.87;
+      const boilBody = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.56, 0.65, 36), boilWaterMat);
+      boilBody.position.y = 1.3;
       boilerGroup.add(boilBody);
-      const boilTop = createRippleDisc(0.79, 10, boilWaterMat);
-      boilTop.position.y = 1.25;
+      const boilTop = createRippleDisc(0.78, 10, boilWaterMat);
+      boilTop.position.y = 1.63;
       boilerGroup.add(boilTop);
       this.cau4.boilTop = boilTop;
 
       // Bọt khí nước sôi trong bình
-      this.cau4.boilBubbles = this._createParticleCloud(42, 0xe0f2fe, 0.085, this.sprites.bubble, boilerGroup, {
-        minR: 0.05, maxR: 0.68, minY: 0.54, maxY: 1.24
+      this.cau4.boilBubbles = this._createParticleCloud(46, 0xe0f2fe, 0.085, this.sprites.bubble, boilerGroup, {
+        minR: 0.05, maxR: 0.66, minY: 1.0, maxY: 1.62
       });
 
-      // Nút cao su đỏ & Nhiệt kế bình 100 °C
+      // Nút cao su đỏ & Cổ kẹp bình
       const stopper = new THREE.Mesh(
         new THREE.CylinderGeometry(0.25, 0.21, 0.22, 24),
-        new THREE.MeshStandardMaterial({ color: '#dc2626', roughness: 0.7 })
+        new THREE.MeshStandardMaterial({ color: '#e11d48', roughness: 0.65 })
       );
-      stopper.position.y = 2.58;
+      stopper.position.y = 2.86;
       boilerGroup.add(stopper);
 
-      // Bảng hiển thị nhiệt độ bình hơi 100°C
+      // Bảng hiển thị nhiệt độ bình hơi 100°C đặt nghiêng phía trước kiềng đun
+      const boilerPedestal = new THREE.Mesh(
+        new THREE.BoxGeometry(1.12, 0.48, 0.14),
+        new THREE.MeshStandardMaterial({ color: '#0f172a', metalness: 0.4, roughness: 0.4 })
+      );
+      boilerPedestal.position.set(0.05, 0.34, 1.08);
+      boilerPedestal.rotation.x = -0.45;
+      boilerPedestal.rotation.y = 0.18;
+      boilerGroup.add(boilerPedestal);
+
       this.cau4.boilerScreen = createDynamicScreen(240, 100);
       const boilerLcd = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.95, 0.4),
+        new THREE.PlaneGeometry(1.02, 0.42),
         new THREE.MeshBasicMaterial({ map: this.cau4.boilerScreen.tex })
       );
-      boilerLcd.position.set(0, 0.23, 1.06);
+      boilerLcd.position.set(0.07, 0.38, 1.15);
+      boilerLcd.rotation.x = -0.45;
+      boilerLcd.rotation.y = 0.18;
       boilerGroup.add(boilerLcd);
 
-      // --- ỐNG DẪN HƠI NƯỚC TỪ BÌNH SANG NHIỆT LƯỢNG KẾ ---
+      // --- ỐNG DẪN HƠI ĐỒNG BỌC CÁCH NHIỆT TỪ BÌNH SANG CỐC NHÔM ---
       const pipeCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-2.95, 2.66, -0.15),
-        new THREE.Vector3(-2.95, 3.22, -0.15),
-        new THREE.Vector3(-1.6, 3.44, -0.15),
-        new THREE.Vector3(-0.22, 3.34, -0.15),
-        new THREE.Vector3(-0.22, 1.35, -0.15)
+        new THREE.Vector3(-2.95, 2.94, -0.15),
+        new THREE.Vector3(-2.95, 3.45, -0.15),
+        new THREE.Vector3(-1.6, 3.62, -0.15),
+        new THREE.Vector3(-0.22, 3.42, -0.15),
+        new THREE.Vector3(-0.22, 1.32, -0.15)
       ]);
       this.cau4.pipeCurve = pipeCurve;
 
       const pipeMat = new THREE.MeshPhysicalMaterial({
-        color: '#e2e8f0',
+        color: '#fed7aa',
         transparent: true,
-        opacity: 0.45,
-        roughness: 0.1
+        opacity: 0.48,
+        roughness: 0.12
       });
-      const pipeMesh = new THREE.Mesh(new THREE.TubeGeometry(pipeCurve, 64, 0.075, 16, false), pipeMat);
+      const pipeMesh = new THREE.Mesh(new THREE.TubeGeometry(pipeCurve, 64, 0.08, 16, false), pipeMat);
       root.add(pipeMesh);
 
-      // Van khóa hơi nước 3D màu đỏ có thể xoay
+      // Đầu vòi đồng sục hơi nhúng vào cốc
+      const nozzleTip = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.24, 16), brass4Mat);
+      nozzleTip.position.set(-0.22, 1.24, -0.15);
+      root.add(nozzleTip);
+
+      // Van khóa hơi nước 3D màu đỏ
       const valveGroup = new THREE.Group();
-      valveGroup.position.set(-1.6, 3.44, -0.15);
+      valveGroup.position.set(-1.6, 3.62, -0.15);
       root.add(valveGroup);
       const valveRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.14, 0.032, 12, 24),
-        new THREE.MeshStandardMaterial({ color: '#ef4444', roughness: 0.35 })
+        new THREE.TorusGeometry(0.15, 0.036, 12, 24),
+        new THREE.MeshStandardMaterial({ color: '#f43f5e', roughness: 0.35 })
       );
       valveRing.position.y = 0.16;
       valveGroup.add(valveRing);
       const valveStem = new THREE.Mesh(
         new THREE.CylinderGeometry(0.04, 0.04, 0.18, 12),
-        new THREE.MeshStandardMaterial({ color: '#f59e0b', metalness: 0.85, roughness: 0.25 })
+        brass4Mat
       );
       valveStem.position.y = 0.08;
       valveGroup.add(valveStem);
@@ -1040,8 +1090,8 @@
 
       // Các hạt hơi chạy dọc ống dẫn hơi
       this.cau4.pipeSteamMotes = [];
-      const moteGeo = new THREE.SphereGeometry(0.048, 8, 8);
-      const moteMat = new THREE.MeshBasicMaterial({ color: '#fff7ed', transparent: true, opacity: 0.85 });
+      const moteGeo = new THREE.SphereGeometry(0.052, 8, 8);
+      const moteMat = new THREE.MeshBasicMaterial({ color: '#fff7ed', transparent: true, opacity: 0.88 });
       for (let i = 0; i < 24; i++) {
         const m = new THREE.Mesh(moteGeo, moteMat);
         m.userData.t = i / 24;
@@ -1049,84 +1099,111 @@
         this.cau4.pipeSteamMotes.push(m);
       }
 
-      // --- CỤM GIỮA: CÂN ĐIỆN TỬ + NHIỆT LƯỢNG KẾ NHÔM ---
+      // --- CỤM GIỮA: CÂN ĐIỆN TỬ MẶT NGHIÊNG LỚN + NHIỆT LƯỢNG KẾ NHÔM LỘ THIÊN ---
       const scaleGroup = new THREE.Group();
       scaleGroup.position.set(0.35, 0, 0);
       root.add(scaleGroup);
 
-      // Đế cân điện tử phòng thí nghiệm
+      // 4 chân đệm cao su dưới cân
+      [[-1.25, -1.1], [1.25, -1.1], [-1.25, 1.1], [1.25, 1.1]].forEach(([fx, fz]) => {
+        const foot = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.16, 0.18, 0.12, 16),
+          new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.8 })
+        );
+        foot.position.set(fx, 0.06, fz);
+        scaleGroup.add(foot);
+      });
+
+      // Thân cân điện tử hợp kim trắng-xám mảnh gọn
       const scaleBody = new THREE.Mesh(
-        new THREE.BoxGeometry(3.55, 0.42, 3.45),
-        new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.25, roughness: 0.38 })
+        new THREE.BoxGeometry(3.05, 0.3, 2.75),
+        new THREE.MeshStandardMaterial({ color: '#cbd5e1', metalness: 0.35, roughness: 0.32 })
       );
-      scaleBody.position.y = 0.21;
+      scaleBody.position.set(0, 0.27, -0.08);
       scaleBody.castShadow = true;
       scaleBody.receiveShadow = true;
       scaleGroup.add(scaleBody);
 
-      // Màn hình cân phía trước nghiêng 20 độ
+      // Bảng điều khiển LCD nhô hẳn ra phía trước + nghiêng 32 độ hướng thẳng về camera (tránh bị thanh timeline che!)
       const scalePanel = new THREE.Mesh(
-        new THREE.BoxGeometry(2.6, 0.34, 0.38),
-        new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.4 })
+        new THREE.BoxGeometry(2.38, 0.56, 0.24),
+        new THREE.MeshStandardMaterial({ color: '#0f172a', metalness: 0.45, roughness: 0.35 })
       );
-      scalePanel.position.set(0, 0.2, 1.72);
-      scalePanel.rotation.x = -0.38;
+      scalePanel.position.set(0, 0.38, 1.48);
+      scalePanel.rotation.x = -0.56;
+      scalePanel.castShadow = true;
       scaleGroup.add(scalePanel);
 
       this.cau4.scaleScreen = createDynamicScreen(420, 110);
       const scaleLcd = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.38, 0.26),
+        new THREE.PlaneGeometry(2.16, 0.46),
         new THREE.MeshBasicMaterial({ map: this.cau4.scaleScreen.tex })
       );
-      scaleLcd.position.set(0, 0.27, 1.88);
-      scaleLcd.rotation.x = -0.38;
+      scaleLcd.position.set(0, 0.45, 1.59);
+      scaleLcd.rotation.x = -0.56;
       scaleGroup.add(scaleLcd);
 
-      // Đĩa cân inox tròn
+      // Đĩa cân inox sáng bóng
       const platter = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.52, 1.56, 0.08, 48),
-        new THREE.MeshStandardMaterial({ color: '#cbd5e1', metalness: 0.9, roughness: 0.18 })
+        new THREE.CylinderGeometry(1.38, 1.44, 0.08, 48),
+        new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.92, roughness: 0.14 })
       );
-      platter.position.set(0, 0.46, -0.05);
+      platter.position.set(0, 0.46, -0.08);
       platter.receiveShadow = true;
       scaleGroup.add(platter);
 
-      // Nhiệt lượng kế Nhôm đặt trên đĩa cân (có mặt cắt cutaway!)
+      // Nhiệt lượng kế BẰNG NHÔM đặt trên đĩa cân: áo bọc đỏ tía thấp + cốc nhôm bạc nhô cao rõ nét!
       const cal4 = new THREE.Group();
-      cal4.position.set(0, 0.5, -0.05);
+      cal4.position.set(0, 0.5, -0.08);
       scaleGroup.add(cal4);
 
-      const openAngle4 = 1.95;
-      const cal4Height = 2.65;
-      const outer4Mat = new THREE.MeshStandardMaterial({
-        color: '#0f766e',
-        metalness: 0.4,
-        roughness: 0.35,
+      const openAngle4 = 2.25;
+      const jacketH = 1.42;
+      const aluHeight = 2.38;
+
+      const jacket4Mat = new THREE.MeshStandardMaterial({
+        color: '#9f1239',
+        metalness: 0.35,
+        roughness: 0.38,
         side: THREE.DoubleSide
       });
-      const foam4Mat = new THREE.MeshStandardMaterial({
-        map: foamTex,
-        roughness: 0.9,
+      const darkRimMat = new THREE.MeshStandardMaterial({
+        color: '#1e293b',
+        metalness: 0.65,
+        roughness: 0.3,
         side: THREE.DoubleSide
       });
-      // Cốc nhôm bên trong (thay đổi ánh nhiệt nhẹ từ xanh lạnh -> ngọc)
+      // Cốc nhôm bên trong (kim loại nhôm sáng phay, đổi ánh nhiệt nhẹ từ xanh lạnh -> ngọc)
       const aluMat = new THREE.MeshStandardMaterial({
         map: metalTex,
-        color: '#e2e8f0',
+        color: '#f1f5f9',
         emissive: new THREE.Color('#0284c7'),
-        emissiveIntensity: 0.14,
-        metalness: 0.88,
-        roughness: 0.22,
+        emissiveIntensity: 0.12,
+        metalness: 0.9,
+        roughness: 0.2,
         side: THREE.DoubleSide
       });
       this.cau4.aluMat = aluMat;
 
-      cal4.add(createCutawayShell(1.36, 1.45, cal4Height, openAngle4, outer4Mat, outer4Mat));
-      cal4.add(createCutawayShell(1.18, 1.36, cal4Height - 0.04, openAngle4, foam4Mat, foam4Mat));
-      cal4.add(createCutawayShell(1.08, 1.18, cal4Height - 0.05, openAngle4, aluMat, aluMat));
+      // Vỏ đỡ bảo vệ màu đỏ rượu thấp ở nửa dưới (khác hẳn bình xanh xốp vàng của Câu 2!)
+      cal4.add(createCutawayShell(1.24, 1.36, jacketH, openAngle4, jacket4Mat, darkRimMat));
+      // Viền đồng trang trí trên miệng áo đỏ rượu (cùng góc cắt cutaway để không chắn mặt trước)
+      const brassCollar4 = createCutawayShell(1.22, 1.38, 0.075, openAngle4, brass4Mat, brass4Mat);
+      brassCollar4.position.y = jacketH;
+      cal4.add(brassCollar4);
 
-      // Đáy cốc nhôm & vỏ ngoài
-      const c4Base = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, 0.1, 48), outer4Mat);
+      // Lòng cốc NHÔM cao vươn hẳn lên trên (hở phần trên cho thấy chất liệu nhôm sáng đặc trưng)
+      cal4.add(createCutawayShell(1.06, 1.18, aluHeight, openAngle4, aluMat, aluMat));
+
+      // Đai nhận diện xanh ngọc ở cổ cốc nhôm
+      const aluBand = createCutawayShell(1.18, 1.21, 0.16, openAngle4, new THREE.MeshStandardMaterial({
+        color: '#10b981', metalness: 0.5, roughness: 0.28, side: THREE.DoubleSide
+      }));
+      aluBand.position.y = aluHeight - 0.32;
+      cal4.add(aluBand);
+
+      // Đáy cốc nhôm & chân đế
+      const c4Base = new THREE.Mesh(new THREE.CylinderGeometry(1.36, 1.36, 0.1, 48), darkRimMat);
       c4Base.position.y = 0.05;
       cal4.add(c4Base);
       const c4AluBase = new THREE.Mesh(new THREE.CylinderGeometry(1.16, 1.16, 0.1, 48), aluMat);
@@ -1135,53 +1212,53 @@
 
       // Vỏ kính khi tắt Cutaway
       const glassCover4 = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.44, 1.44, cal4Height, 32, 1, true, -openAngle4 * 0.5, openAngle4),
+        new THREE.CylinderGeometry(1.2, 1.2, aluHeight, 32, 1, true, -openAngle4 * 0.5, openAngle4),
         new THREE.MeshPhysicalMaterial({
-          color: '#ccfbf1',
+          color: '#e2e8f0',
           transparent: true,
-          opacity: 0.2,
+          opacity: 0.22,
           roughness: 0.08,
           side: THREE.DoubleSide
         })
       );
-      glassCover4.position.y = cal4Height * 0.5;
+      glassCover4.position.y = aluHeight * 0.5;
       glassCover4.visible = false;
       cal4.add(glassCover4);
       this.cau4.glassCover = glassCover4;
 
-      // Nắp nhiệt lượng kế trong suốt
+      // Nắp kính trên miệng cốc nhôm
       const lid4 = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.44, 1.44, 0.08, 48),
-        new THREE.MeshPhysicalMaterial({ color: '#ecfeff', transparent: true, opacity: 0.34, roughness: 0.1 })
+        new THREE.CylinderGeometry(1.2, 1.2, 0.07, 48),
+        new THREE.MeshPhysicalMaterial({ color: '#ecfeff', transparent: true, opacity: 0.36, roughness: 0.1 })
       );
-      lid4.position.y = cal4Height + 0.04;
+      lid4.position.y = aluHeight + 0.035;
       cal4.add(lid4);
 
-      // Thước chia vạch khối lượng nước (0..500g) gắn cạnh mặt cắt
+      // Thước chia vạch khối lượng nước (0..500g) gắn cạnh mặt cắt phải
       this.cau4.gaugeScreen = createDynamicScreen(110, 320);
       const gaugeMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.42, 1.8),
+        new THREE.PlaneGeometry(0.4, 1.68),
         new THREE.MeshBasicMaterial({ map: this.cau4.gaugeScreen.tex, transparent: true })
       );
-      gaugeMesh.position.set(0.95, 1.25, 0.72);
-      gaugeMesh.rotation.y = -0.35;
+      gaugeMesh.position.set(0.9, 1.15, 0.72);
+      gaugeMesh.rotation.y = -0.15;
       cal4.add(gaugeMesh);
 
-      // Nước lỏng trong nhiệt lượng kế (dâng từ 0 lên 500 g)
+      // Nước lỏng trong cốc nhôm (dâng từ 0 lên 500 g)
       const water4Mat = new THREE.MeshPhysicalMaterial({
         color: '#38bdf8',
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.54,
         roughness: 0.08,
         metalness: 0.04,
         side: THREE.DoubleSide
       });
-      const water4Body = new THREE.Mesh(new THREE.CylinderGeometry(1.06, 1.06, 1.0, 48), water4Mat);
+      const water4Body = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.04, 1.0, 44), water4Mat);
       water4Body.position.y = 0.27;
       water4Body.visible = false;
       cal4.add(water4Body);
 
-      const water4Top = createRippleDisc(1.06, 14, water4Mat);
+      const water4Top = createRippleDisc(1.04, 12, water4Mat);
       water4Top.position.y = 0.28;
       water4Top.visible = false;
       cal4.add(water4Top);
@@ -1189,48 +1266,45 @@
       this.cau4.waterTop = water4Top;
       this.cau4.waterMat = water4Mat;
 
-      // Viên nước đá lớn ở -5°C (Cụm pha lê ghép nhiều khối trong mờ)
+      // MỘT VIÊN NƯỚC ĐÁ LỚN ở -5°C (Khối băng tảng góc cạnh sắc nét, khác hẳn các viên nhỏ Câu 2)
       const ice4Group = new THREE.Group();
-      ice4Group.position.set(0.18, 0.72, 0.05);
+      ice4Group.position.set(0.22, 0.72, 0.05);
       cal4.add(ice4Group);
       const ice4Mat = new THREE.MeshPhysicalMaterial({
-        color: '#bae6fd',
+        color: '#a5f3fc',
         emissive: new THREE.Color('#0284c7'),
-        emissiveIntensity: 0.22,
+        emissiveIntensity: 0.26,
         transparent: true,
-        opacity: 0.86,
-        roughness: 0.12,
+        opacity: 0.88,
+        roughness: 0.1,
         flatShading: true
       });
-      const mainIce = new THREE.Mesh(new THREE.DodecahedronGeometry(0.54, 0), ice4Mat);
-      mainIce.scale.set(1.18, 0.9, 1.05);
+      const mainIce = new THREE.Mesh(new THREE.DodecahedronGeometry(0.58, 0), ice4Mat);
+      mainIce.scale.set(1.22, 0.94, 1.08);
       mainIce.castShadow = true;
       ice4Group.add(mainIce);
-      const subIce1 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.48, 0.5), ice4Mat);
-      subIce1.position.set(-0.28, -0.1, 0.22);
+      const subIce1 = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), ice4Mat);
+      subIce1.position.set(-0.24, -0.08, 0.2);
       subIce1.rotation.set(0.4, 0.6, 0.2);
       ice4Group.add(subIce1);
-      const subIce2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), ice4Mat);
-      subIce2.position.set(0.32, 0.15, -0.18);
-      ice4Group.add(subIce2);
       this.cau4.iceGroup = ice4Group;
       this.cau4.iceMat = ice4Mat;
 
-      // Hạt sương lạnh quanh đá + đám mây hơi nước sục ra từ đúng đầu vòi phun (-0.57, 0.85, -0.1)
+      // Hạt sương lạnh quanh đá + đám mây hơi nước sục ra từ đúng đầu vòi phun (-0.57, 0.8, -0.07)
       this.cau4.frostCloud = this._createParticleCloud(34, 0xe0f2fe, 0.1, this.sprites.glow, cal4, {
-        minR: 0.1, maxR: 0.9, minY: 0.45, maxY: 1.75
+        minR: 0.1, maxR: 0.88, minY: 0.45, maxY: 1.7
       });
       const steamOrigin = new THREE.Group();
-      steamOrigin.position.set(-0.57, 0, -0.1);
+      steamOrigin.position.set(-0.57, 0, -0.07);
       cal4.add(steamOrigin);
       this.cau4.steamPlume = this._createParticleCloud(55, 0xffedd5, 0.17, this.sprites.glow, steamOrigin, {
-        minR: 0.02, maxR: 0.36, minY: 0.72, maxY: 2.15
+        minR: 0.02, maxR: 0.36, minY: 0.68, maxY: 2.0
       });
 
       // --- CỤM PHẢI: NHIỆT KẾ KÉP THEO DÕI CÂN BẰNG ---
       const dualMeter = new THREE.Group();
-      dualMeter.position.set(3.25, 0, 0.3);
-      dualMeter.rotation.y = -0.35;
+      dualMeter.position.set(3.25, 0, 0.35);
+      dualMeter.rotation.y = -0.3;
       root.add(dualMeter);
 
       const meterStand = new THREE.Mesh(
@@ -1252,9 +1326,9 @@
       // Dây cảm biến nối từ đồng hồ sang cốc nhôm
       const sensorCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(2.55, 1.2, 0.25),
-        new THREE.Vector3(1.85, 2.35, 0.1),
-        new THREE.Vector3(0.95, 3.2, -0.05),
-        new THREE.Vector3(0.82, 1.3, -0.05)
+        new THREE.Vector3(1.85, 2.25, 0.1),
+        new THREE.Vector3(0.95, 2.95, -0.08),
+        new THREE.Vector3(0.82, 1.25, -0.08)
       ]);
       root.add(new THREE.Mesh(
         new THREE.TubeGeometry(sensorCurve, 32, 0.026, 8, false),
@@ -1263,19 +1337,19 @@
 
       // Mũi tên dòng nhiệt Q_tỏa (hơi) -> Q_thu (nhôm + đá)
       this.cau4.heatArrows = this._createFlowArrows(root, [
-        { pos: [-1.45, 3.12, 0.15], color: 0xf43f5e, group: 'steamToa', rotZ: -Math.PI / 2 },
+        { pos: [-1.45, 3.28, 0.15], color: 0xf43f5e, group: 'steamToa', rotZ: -Math.PI / 2 },
         { pos: [-0.08, 2.2, 0.45], color: 0xf97316, group: 'steamToa', rotZ: Math.PI },
         { pos: [0.68, 1.35, 0.55], color: 0x38bdf8, group: 'cupThu', rotZ: 0 },
         { pos: [0.35, 1.05, 0.58], color: 0x22d3ee, group: 'iceThu', rotZ: Math.PI / 2 }
       ]);
 
       this.cau4.anchors = {
-        boiler: new THREE.Vector3(-2.95, 2.35, -0.15),
-        calorimeter: new THREE.Vector3(0.35, 3.25, -0.55),
-        ice: new THREE.Vector3(0.65, 1.55, 0.35),
-        nozzle: new THREE.Vector3(-0.22, 1.5, 0.2),
-        scale: new THREE.Vector3(-1.05, 0.55, 1.45),
-        dualMeter: new THREE.Vector3(3.25, 2.1, 0.3)
+        boiler: new THREE.Vector3(-2.95, 2.85, -0.15),
+        calorimeter: new THREE.Vector3(0.35, 3.05, -0.45),
+        ice: new THREE.Vector3(0.62, 1.45, 0.32),
+        nozzle: new THREE.Vector3(-0.22, 1.45, 0.2),
+        scale: new THREE.Vector3(-0.85, 0.85, 1.45),
+        dualMeter: new THREE.Vector3(3.25, 2.1, 0.35)
       };
     }
 
@@ -1459,10 +1533,10 @@
     setCameraPreset(preset, immediate) {
       const is2 = this.activeProblem === 'cau2';
       if (preset === 'overview') {
-        this.camGoal.theta = is2 ? 0.28 : 0.22;
-        this.camGoal.phi = 1.15;
+        this.camGoal.theta = is2 ? 0.28 : -0.18;
+        this.camGoal.phi = is2 ? 1.15 : 1.13;
         this.camGoal.radius = is2 ? 10.7 : 11.4;
-        this.camGoal.target.set(is2 ? -0.05 : -0.05, 1.55, 0);
+        this.camGoal.target.set(is2 ? -0.05 : 0.05, 1.55, 0);
       } else if (preset === 'core') {
         this.camGoal.theta = 0.14;
         this.camGoal.phi = 1.24;
@@ -1706,10 +1780,16 @@
       const { state, summary, params } = sim;
       const t = this.clockTime;
 
-      // Bình sinh hơi sôi sùng sục
+      // Bình sinh hơi sôi sùng sục + ngọn lửa Bunsen bập bùng
       animateRippleDisc(this.cau4.boilTop, t, 0.025, 10);
       this._animateParticleCloud(this.cau4.boilBubbles, dt, 1.4, 0.85);
-      this.cau4.burnerLight.intensity = 1.5 + Math.sin(t * 7.0) * 0.28;
+      this.cau4.burnerLight.intensity = 1.6 + Math.sin(t * 7.0) * 0.32;
+      if (this.cau4.flameOuter) {
+        this.cau4.flameOuter.scale.set(1 + Math.sin(t * 14) * 0.08, 1 + Math.cos(t * 17) * 0.14, 1 + Math.sin(t * 15) * 0.08);
+      }
+      if (this.cau4.flameInner) {
+        this.cau4.flameInner.scale.set(1 + Math.cos(t * 19) * 0.07, 1 + Math.sin(t * 21) * 0.16, 1);
+      }
 
       // Van hơi mở khi đang sục hơi
       const valveTarget = state.steamFlowActive ? 0 : Math.PI * 0.5;
@@ -1983,18 +2063,27 @@
       const h = this.container.clientHeight;
       const result = [];
 
+      const st = this.lastData ? this.lastData.state : null;
+      const curTemp = st ? (this.activeProblem === 'cau4' ? st.tempSystem : st.temp) : null;
+      const curTempStr = typeof curTemp === 'number' ? curTemp.toFixed(1) + '°C' : '';
       const iceLbl =
-        this.lastData && this.lastData.state.meltIceFrac >= 0.99
+        st && st.meltIceFrac >= 0.99
           ? 'Nước đã tan hết'
-          : this.lastData
-            ? 'Viên đá (' + this.lastData.state.tempSystem.toFixed(0) + '°C)'
+          : curTempStr
+            ? 'Viên đá (' + curTempStr + ')'
             : 'Viên đá';
+      const cau2IceLbl =
+        st && st.meltIceFrac >= 0.99
+          ? 'Nước lỏng (m kg)'
+          : curTempStr
+            ? 'Nước đá m kg (' + curTempStr + ')'
+            : 'Nước đá (m kg)';
 
       const items =
         this.activeProblem === 'cau2'
           ? [
               { id: 'solidX', text: 'Chất X (Hg, −38,83°C)', anchor: this.cau2.anchors.solidX, tone: 'silver' },
-              { id: 'ice', text: 'Nước đá (m kg)', anchor: this.cau2.anchors.ice, tone: 'cyan' },
+              { id: 'ice', text: cau2IceLbl, anchor: this.cau2.anchors.ice, tone: 'cyan' },
               { id: 'coil', text: 'Dây đun (P = const)', anchor: this.cau2.anchors.coil, tone: 'amber' },
               { id: 'psu', text: 'Nguồn ổn công suất', anchor: this.cau2.anchors.psu, tone: 'amber' },
               { id: 'timer', text: 'Đồng hồ τ (phút)', anchor: this.cau2.anchors.timer, tone: 'cyan' }

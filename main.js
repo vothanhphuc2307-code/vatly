@@ -259,6 +259,7 @@
     // Animation loop
     let lastTs = performance.now();
     function tick(now) {
+      requestAnimationFrame(tick);
       const dt = Math.max(0, Math.min((now - lastTs) / 1000, 0.05));
       lastTs = now;
 
@@ -274,7 +275,6 @@
 
       scene3D.renderFrame(dt);
       updateAnnotations();
-      requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
   });
